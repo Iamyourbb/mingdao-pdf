@@ -5,16 +5,12 @@ const app = express();
 app.use(express.json({ limit: "20mb" }));
 
 const REGION_RATIO = { x: 0.68, y: 0.92, w: 0.20, h: 0.05 };
-const TARGET_FIELD_ID = process.env.TARGET_FIELD_ID;
-const FILE_FIELD_ID   = process.env.FILE_FIELD_ID;
-const MINGDAO_APP_KEY = process.env.MINGDAO_APP_KEY;
-const MINGDAO_SIGN    = process.env.MINGDAO_SIGN;
 
-const HEADERS = {
+const getHeaders = () => ({
   "Content-Type": "application/json",
-  "HAP-Appkey": MINGDAO_APP_KEY,
-  "HAP-Sign": MINGDAO_SIGN,
-};
+  "HAP-Appkey": process.env.MINGDAO_APP_KEY,
+  "HAP-Sign": process.env.MINGDAO_SIGN,
+});
 
 app.post("/extract", async (req, res) => {
   const { recordId, worksheetId } = req.body || {};
@@ -25,14 +21,14 @@ app.post("/extract", async (req, res) => {
     // 1. 用 V3 API 获取记录
     const rowResp = await fetch(
       `https://api.mingdao.com/v3/app/worksheets/${worksheetId}/rows/${recordId}`,
-      { headers: HEADERS }
+      { headers: getHeaders() }
     );
     const rowData = await rowResp.json();
     if (!rowData.success) throw new Error(`获取记录失败: ${JSON.stringify(rowData)}`);
 
     // 2. 取附件URL
     const fields = rowData.data?.fields || [];
-    const fileField = fields.find(f => f.id === FILE_FIELD_ID);
+    const fileField = fields.find(f => f.id === process.env.FILE_FIELD_ID);
     if (!fileField?.value) throw new Error("附件字段为空");
 
     const files = typeof fileField.value === "string"
@@ -73,9 +69,9 @@ app.post("/extract", async (req, res) => {
       `https://api.mingdao.com/v3/app/worksheets/${worksheetId}/rows/${recordId}`,
       {
         method: "PATCH",
-        headers: HEADERS,
+        headers: getHeaders(),
         body: JSON.stringify({
-          fields: [{ id: TARGET_FIELD_ID, value: text }]
+          fields: [{ id: process.env.TARGET_FIELD_ID, value: text }]
         }),
       }
     );
