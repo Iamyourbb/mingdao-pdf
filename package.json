@@ -1,0 +1,8 @@
+{
+  "name": "mingdao-pdf-ocr",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "pdfjs-dist": "^4.4.168"
+  }
+}
