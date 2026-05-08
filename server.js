@@ -6,10 +6,15 @@ app.use(express.json({ limit: "20mb" }));
 
 const REGION_RATIO = { x: 0.68, y: 0.92, w: 0.20, h: 0.05 };
 const TARGET_FIELD_ID = process.env.TARGET_FIELD_ID;
-const FILE_FIELD_ID   = process.env.FILE_FIELD_ID;   // 图纸附件字段ID
+const FILE_FIELD_ID   = process.env.FILE_FIELD_ID;
 const MINGDAO_APP_KEY = process.env.MINGDAO_APP_KEY;
 const MINGDAO_SIGN    = process.env.MINGDAO_SIGN;
-const MINGDAO_API     = "https://api.mingdao.com/v2/open/worksheet";
+
+const HEADERS = {
+  "Content-Type": "application/json",
+  "HAP-Appkey": MINGDAO_APP_KEY,
+  "HAP-Sign": MINGDAO_SIGN,
+};
 
 app.post("/extract", async (req, res) => {
   const { recordId, worksheetId } = req.body || {};
@@ -17,34 +22,31 @@ app.post("/extract", async (req, res) => {
     return res.status(400).json({ error: "缺少参数" });
 
   try {
-    // 1. 查询记录，获取附件URL
-    const rowResp = await fetch(`${MINGDAO_API}/getRowByIdPost`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        appKey: MINGDAO_APP_KEY,
-        sign: MINGDAO_SIGN,
-        worksheetId,
-        rowId: recordId,
-      }),
-    });
+    // 1. 用 V3 API 获取记录
+    const rowResp = await fetch(
+      `https://api.mingdao.com/v3/app/worksheets/${worksheetId}/rows/${recordId}`,
+      { headers: HEADERS }
+    );
     const rowData = await rowResp.json();
     if (!rowData.success) throw new Error(`获取记录失败: ${JSON.stringify(rowData)}`);
 
-    const fileField = rowData.data[FILE_FIELD_ID];
-    if (!fileField || !fileField.length)
-      throw new Error("附件字段为空");
+    // 2. 取附件URL
+    const fields = rowData.data?.fields || [];
+    const fileField = fields.find(f => f.id === FILE_FIELD_ID);
+    if (!fileField?.value) throw new Error("附件字段为空");
 
-    const files = typeof fileField === "string" ? JSON.parse(fileField) : fileField;
+    const files = typeof fileField.value === "string"
+      ? JSON.parse(fileField.value)
+      : fileField.value;
     const fileUrl = files[0]?.previewUrl || files[0]?.url || files[0]?.downloadUrl;
-    if (!fileUrl) throw new Error("无法获取附件URL");
+    if (!fileUrl) throw new Error(`无法获取附件URL，附件数据: ${JSON.stringify(files[0])}`);
 
-    // 2. 下载PDF
+    // 3. 下载PDF
     const pdfResp = await fetch(fileUrl);
     if (!pdfResp.ok) throw new Error(`下载PDF失败: ${pdfResp.status}`);
     const arrayBuffer = await pdfResp.arrayBuffer();
 
-    // 3. 提取区域文字
+    // 4. 提取区域文字
     const pdf  = await getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
     const page = await pdf.getPage(1);
     const vp   = page.getViewport({ scale: 1 });
@@ -66,18 +68,17 @@ app.post("/extract", async (req, res) => {
     lines.sort((a, b) => a.y - b.y || a.x - b.x);
     const text = lines.map(l => l.text).join(" ").trim() || "（未识别到文字）";
 
-    // 4. 写回明道云
-    const mdResp = await fetch(`${MINGDAO_API}/editRow`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        appKey: MINGDAO_APP_KEY,
-        sign: MINGDAO_SIGN,
-        worksheetId,
-        rowId: recordId,
-        controls: [{ controlId: TARGET_FIELD_ID, value: text }],
-      }),
-    });
+    // 5. 写回明道云
+    const mdResp = await fetch(
+      `https://api.mingdao.com/v3/app/worksheets/${worksheetId}/rows/${recordId}`,
+      {
+        method: "PATCH",
+        headers: HEADERS,
+        body: JSON.stringify({
+          fields: [{ id: TARGET_FIELD_ID, value: text }]
+        }),
+      }
+    );
     const mdResult = await mdResp.json();
     if (!mdResult.success) throw new Error(`写入失败: ${JSON.stringify(mdResult)}`);
 
