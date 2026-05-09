@@ -56,7 +56,10 @@ app.post("/extract", async (req, res) => {
         lines.push({ text: item.str, x: tx, y: topY });
     }
     lines.sort((a, b) => a.y - b.y || a.x - b.x);
-    const text = lines.map(l => l.text).join(" ").trim() || "（未识别到文字）";
+
+    const rawText = lines.map(l => l.text).join(" ").trim();
+    const match = rawText.match(/工艺路线[：:]\s*(\d+)/);
+    const text = match ? match[1] : rawText || "（未识别到文字）";
 
     const mdResp = await fetch(
       `https://api.mingdao.com/v3/app/worksheets/${worksheetId}/rows/${recordId}`,
