@@ -4,7 +4,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 const app = express();
 app.use(express.json({ limit: "20mb" }));
 
-const REGION_RATIO = { x: 0.68, y: 0.92, w: 0.20, h: 0.05 };
+const REGION_RATIO = { x: 0.62, y: 0.96, w: 0.25, h: 0.04 };
 
 const getHeaders = () => ({
   "Content-Type": "application/json",
