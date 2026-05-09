@@ -28,12 +28,12 @@ app.post("/extract", async (req, res) => {
 
     // 2. 取附件URL
     const fileFieldData = rowData.data?.Atta;
-    if (!fileFieldData || fileFieldData === "")
+    if (!fileFieldData || fileFieldData === "" || (Array.isArray(fileFieldData) && fileFieldData.length === 0))
       throw new Error("附件字段为空");
 
-    const files = JSON.parse(fileFieldData);
-    const fileUrl = files[0];
-    if (!fileUrl) throw new Error("无法获取附件URL");
+    const files = Array.isArray(fileFieldData) ? fileFieldData : JSON.parse(fileFieldData);
+    const fileUrl = files[0]?.url || files[0]?.previewUrl || files[0]?.downloadUrl || files[0];
+    if (!fileUrl) throw new Error(`无法获取附件URL: ${JSON.stringify(files[0])}`);
 
     // 3. 下载PDF
     const pdfResp = await fetch(fileUrl);
