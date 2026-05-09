@@ -4,7 +4,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 const app = express();
 app.use(express.json({ limit: "20mb" }));
 
-const REGION_RATIO = { x: 0.65, y: 0.955, w: 0.22, h: 0.03 };
+const REGION_RATIO = { x: 0.35, y: 0.88, w: 0.60, h: 0.12 };
 
 const getHeaders = () => ({
   "Content-Type": "application/json",
@@ -58,6 +58,7 @@ app.post("/extract", async (req, res) => {
     lines.sort((a, b) => a.y - b.y || a.x - b.x);
 
     const rawText = lines.map(l => l.text).join(" ").trim();
+    console.log("识别原始内容:", rawText);
     const match = rawText.match(/工艺路线[：:]\s*(\d+)/);
     const text = match ? match[1] : rawText || "（未识别到文字）";
 
