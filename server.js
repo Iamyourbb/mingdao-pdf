@@ -32,7 +32,7 @@ app.post("/extract", async (req, res) => {
       throw new Error("附件字段为空");
 
     const files = Array.isArray(fileFieldData) ? fileFieldData : JSON.parse(fileFieldData);
-    const fileUrl = files[0]?.downloadUrl || files[0]?.url || files[0]?.previewUrl;
+    const fileUrl = files[0]?.DownloadUrl || files[0]?.downloadUrl || files[0]?.original_file_full_path;
     if (!fileUrl) throw new Error(`无法获取附件URL: ${JSON.stringify(files[0])}`);
 
     // 3. 下载PDF
