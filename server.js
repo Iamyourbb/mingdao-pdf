@@ -27,15 +27,13 @@ app.post("/extract", async (req, res) => {
     if (!rowData.success) throw new Error(`获取记录失败: ${JSON.stringify(rowData)}`);
 
     // 2. 取附件URL
-    const fileFieldData = rowData.data?.[process.env.FILE_FIELD_ID];
-    if (!fileFieldData || fileFieldData === "" || (Array.isArray(fileFieldData) && fileFieldData.length === 0))
+    const fileFieldData = rowData.data?.Atta;
+    if (!fileFieldData || fileFieldData === "")
       throw new Error("附件字段为空");
 
-    const files = typeof fileFieldData === "string"
-      ? JSON.parse(fileFieldData)
-      : fileFieldData;
-    const fileUrl = files[0]?.previewUrl || files[0]?.url || files[0]?.downloadUrl;
-    if (!fileUrl) throw new Error(`无法获取附件URL，数据: ${JSON.stringify(files[0])}`);
+    const files = JSON.parse(fileFieldData);
+    const fileUrl = files[0];
+    if (!fileUrl) throw new Error("无法获取附件URL");
 
     // 3. 下载PDF
     const pdfResp = await fetch(fileUrl);
